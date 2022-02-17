@@ -1,5 +1,5 @@
 ---
-title: "HW2"
+title: "Exploratory data analysis"
 author: "Venkata Battepati"
 date: "02/03/2022"
 output: pdf_document
@@ -14,3 +14,76 @@ library(gridExtra)
 library(corrplot)
 library(patchwork)
 ```
+
+
+Reading datasets
+```{r}
+positive <- read.csv("Sepsis_control_data.csv")
+control <- read.csv("Sepsis_positive_data.csv")
+positive$sepsis_group <- NULL
+control$sepsis_group <- NULL
+head(control)
+head(positive)
+```
+Summary of datasets
+```{r}
+summary(positive)
+summary(control)
+```
+
+
+
+
+Making box and violin for control age vs temp
+
+
+```{r}
+violin_control = ggplot(control, aes(x=age, y= temp))+
+  geom_violin(outlier.color="blue")+
+  labs(title="age vs temp", x="age", fill="temp")
+violin_control
+```
+
+```{r}
+box_control = ggplot(control, aes(x=age, y= temp))+
+  geom_boxplot(outlier.color="blue")+
+  labs(title="age vs temp", x="age", fill="temp")
+box_control
+```
+
+Making box and violin for positive age vs temp
+
+```{r}
+violin_positive = ggplot(positive, aes(x=age, y= temp))+
+  geom_violin(outlier.color="blue")+
+  labs(title="age vs temp", x="age", fill="temp")
+violin_positive
+```
+
+```{r}
+box_positive = ggplot(positive, aes(x=age, y= temp))+
+  geom_boxplot(outlier.color="blue")+
+  labs(title="age vs temp", x="age", fill="temp")
+box_positive
+```
+
+Scatter plot of control
+
+```{r}
+ attach(control)
+omit_control = na.omit(control)
+numeric_control = subset(omit_control, select=c(age, temp, weight))
+plot(age, numeric_control=100000, main="Scatterplot control",
+   xlab="age", ylab="Vitals", pch=19, color=numeric_control)
+```
+
+Scatter plot of positive
+
+```{r}
+attach(positive)
+omit_positive = na.omit(positive)
+numeric_positive = subset(omit_positive, select=c(age, temp, weight))
+plot(age, numeric_positive=10000000, main="Scatterplot positive",
+   xlab="age", ylab="Vitals", pch=19, color=numeric_positive)
+```
+

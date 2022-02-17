@@ -83,7 +83,26 @@ Scatter plot of positive
 attach(positive)
 omit_positive = na.omit(positive)
 numeric_positive = subset(omit_positive, select=c(age, temp, weight))
+<<<<<<< Updated upstream
 plot(age, numeric_positive=10000000, main="Scatterplot positive",
    xlab="age", ylab="Vitals", pch=19, color=numeric_positive)
 ```
 
+=======
+plot(numeric_positive, y=100000, main="Scatterplot positive",
+   xlab="Age", ylab="Vitals", pch=19, color= "numeric_positive")
+```
+
+
+
+```{r}
+library(ggplot2)
+attach(positive)
+numeric_positive = subset(positive, select=c(temp, weight))
+p <- ggplot(numeric_positive, aes(age, numeric_positive, colour = numeric_positive)) + geom_point()
+p + labs(colour = "numeric_positive")
+```
+
+
+
+>>>>>>> Stashed changes

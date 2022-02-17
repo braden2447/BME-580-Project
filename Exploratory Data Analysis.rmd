@@ -1,0 +1,16 @@
+---
+title: "HW2"
+author: "Venkata Battepati"
+date: "02/03/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(psych) # Contains the winsor function and other helpful statistical tools
+library(tidyverse) # Remember from last homework that dplyr is included in tidyverse
+library(gridExtra)
+library(corrplot)
+library(patchwork)
+```

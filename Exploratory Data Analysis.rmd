@@ -18,8 +18,8 @@ library(patchwork)
 
 Reading datasets
 ```{r}
-positive <- read.csv("Sepsis_control_data.csv")
-control <- read.csv("Sepsis_positive_data.csv")
+control <- read.csv("Sepsis_control_data.csv")
+positive <- read.csv("Sepsis_positive_data.csv")
 positive$sepsis_group <- NULL
 control$sepsis_group <- NULL
 head(control)
@@ -90,9 +90,9 @@ plot(age, numeric_positive=10000000, main="Scatterplot positive",
 
 Combining data sets
 ```{r}
-positive$sepsis = 1
 control$sepsis = 0
-df = rbind(positive,control)
+positive$sepsis = 1
+df = rbind(control,positive)
 head(df)
 ```
 
@@ -101,11 +101,13 @@ names <- c('mech_vent' ,'apnea','perfusion','co_ivh_shunt','co_surgical','co_con
 df[,names] <- lapply(df[,names] , factor)
 summary(df)
 ```
+
 ```{r}
 numeric_df =  select_if(df, is.numeric)
 corr_df = cor(numeric_df,use = "complete.obs")
 corrplot(corr_df, method = 'circle',title="Correlation plot for all Numeric Variables",,mar=c(1,0,1,0))
 ```
+
 ```{r}
 plot_data = df[, c('dbp',  'map',  'glucose', 'sbp', 'temp', 'rr')]
 ```

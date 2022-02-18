@@ -88,21 +88,77 @@ plot(age, numeric_positive=10000000, main="Scatterplot positive",
    xlab="age", ylab="Vitals", pch=19, color=numeric_positive)
 ```
 
-=======
-plot(numeric_positive, y=100000, main="Scatterplot positive",
-   xlab="Age", ylab="Vitals", pch=19, color= "numeric_positive")
+Combining data sets
+```{r}
+positive$sepsis = 1
+control$sepsis = 0
+df = rbind(positive,control)
+head(df)
 ```
 
+```{r}
+names <- c('mech_vent' ,'apnea','perfusion','co_ivh_shunt','co_surgical','co_congenital','co_chronic_lung','co_nec','ecmo','uac','cvl','lethargy','temp_threshold','fio2_threshold','sepsis')
+df[,names] <- lapply(df[,names] , factor)
+summary(df)
+```
+```{r}
+numeric_df =  select_if(df, is.numeric)
+corr_df = cor(numeric_df,use = "complete.obs")
+corrplot(corr_df, method = 'circle',title="Correlation plot for all Numeric Variables",,mar=c(1,0,1,0))
+```
+```{r}
+plot_data = df[, c('dbp',  'map',  'glucose', 'sbp', 'temp', 'rr')]
+```
 
 
 ```{r}
-library(ggplot2)
-attach(positive)
-numeric_positive = subset(positive, select=c(temp, weight))
-p <- ggplot(numeric_positive, aes(age, numeric_positive, colour = numeric_positive)) + geom_point()
-p + labs(colour = "numeric_positive")
+panel.hist <- function(x, ...) {
+    usr <- par("usr")
+    on.exit(par(usr))
+    par(usr = c(usr[1:2], 0, 1.5))
+    his <- hist(x, plot = FALSE)
+    breaks <- his$breaks
+    nB <- length(breaks)
+    y <- his$counts
+    y <- y/max(y)
+    rect(breaks[-nB], 0, breaks[-1], y, col = rgb(0, 1, 1, alpha = 0.5), ...)
+}
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...) {
+    usr <- par("usr")
+    on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    Cor <- cor(x,y,use = "complete.obs")
+    txt <- paste0(prefix, format(c(Cor, 0.123456789), digits = digits)[1])
+    if(missing(cex.cor)) {
+        cex.cor <- 0.4 / strwidth(txt)
+    }
+    text(0.5, 0.5, txt,
+         cex = 1 + cex.cor * Cor) # Resize the text by level of correlation
+}
+pairs(plot_data, upper.panel = panel.cor,diag.panel = panel.hist,lower.panel = panel.smooth,main = "Scatter plots, histograms, and corr coeff for variables of interest")
+```
+```{r}
+library(grid)
 ```
 
+```{r}
+box1 = ggplot(df, aes(x = sepsis, y = glucose))+ #choses what dats is used for boxplot
+  geom_boxplot()+ #makes boxplot 
+  labs(title="Glucose")+
+  theme(plot.title = element_text(hjust = 0.5))
+box2 = ggplot(df, aes(x = sepsis,y = map))+
+  geom_boxplot()+
+  labs(title="Mean Arterial Press.")+
+  theme(plot.title = element_text(size = 10,hjust = 0.5))
+box3 = ggplot(df, aes(x = sepsis,y = temp))+
+  geom_boxplot()+
+  labs(title="Temperature")+
+  theme(plot.title = element_text(hjust = 0.5))
+box4 = ggplot(df, aes(x = sepsis,y = rr))+
+  geom_boxplot()+
+  labs(title="Respiratory Rate")+
+  theme(plot.title = element_text(hjust = 0.5))
+grid.arrange(box1,box2,box3,box4,
+          ncol = 4, top = textGrob("Boxplots for variables of interest")) #creates 1x3 plots
+```
 
-
->>>>>>> Stashed changes

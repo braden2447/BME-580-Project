@@ -27,12 +27,15 @@ head(positive)
 ```
 Summary of datasets
 ```{r}
-summary(positive)
+names <- c('mech_vent' ,'apnea','perfusion','co_ivh_shunt','co_surgical','co_congenital','co_chronic_lung','co_nec','ecmo','uac','cvl','lethargy','temp_threshold','fio2_threshold')
+control[,names] <- lapply(control[,names] , factor)
 summary(control)
 ```
-
-
-
+```{r}
+names <- c('mech_vent' ,'apnea','perfusion','co_ivh_shunt','co_surgical','co_congenital','co_chronic_lung','co_nec','ecmo','uac','cvl','lethargy','temp_threshold','fio2_threshold')
+positive[,names] <- lapply(positive[,names] , factor)
+summary(positive)
+```
 
 Making box and violin for control age vs temp
 
@@ -83,7 +86,6 @@ Scatter plot of positive
 attach(positive)
 omit_positive = na.omit(positive)
 numeric_positive = subset(omit_positive, select=c(age, temp, weight))
-<<<<<<< Updated upstream
 plot(age, numeric_positive=10000000, main="Scatterplot positive",
    xlab="age", ylab="Vitals", pch=19, color=numeric_positive)
 ```
@@ -107,7 +109,7 @@ numeric_df =  select_if(df, is.numeric)
 corr_df = cor(numeric_df,use = "complete.obs")
 corrplot(corr_df, method = 'circle',title="Correlation plot for all Numeric Variables",,mar=c(1,0,1,0))
 ```
-
+Creating a matrix from most correlated variables
 ```{r}
 plot_data = df[, c('dbp',  'map',  'glucose', 'sbp', 'temp', 'rr')]
 ```
@@ -139,6 +141,7 @@ panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...) {
 }
 pairs(plot_data, upper.panel = panel.cor,diag.panel = panel.hist,lower.panel = panel.smooth,main = "Scatter plots, histograms, and corr coeff for variables of interest")
 ```
+Creating boxplot for variables
 ```{r}
 library(grid)
 ```

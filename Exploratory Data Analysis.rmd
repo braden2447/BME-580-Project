@@ -13,10 +13,13 @@ library(tidyverse) # Remember from last homework that dplyr is included in tidyv
 library(gridExtra)
 library(corrplot)
 library(patchwork)
+library(grid)
+library(factoextra)
 ```
 
 
 Reading datasets
+
 ```{r}
 control <- read.csv("Sepsis_control_data.csv")
 positive <- read.csv("Sepsis_positive_data.csv")
@@ -25,7 +28,9 @@ control$sepsis_group <- NULL
 head(control)
 head(positive)
 ```
+
 Summary of datasets
+
 ```{r}
 names <- c('mech_vent' ,'apnea','perfusion','co_ivh_shunt','co_surgical','co_congenital','co_chronic_lung','co_nec','ecmo','uac','cvl','lethargy','temp_threshold','fio2_threshold')
 control[,names] <- lapply(control[,names] , factor)
@@ -37,8 +42,8 @@ positive[,names] <- lapply(positive[,names] , factor)
 summary(positive)
 ```
 
-Making box and violin for control age vs temp
 
+Making box and violin for control age vs temp
 
 ```{r}
 violin_control = ggplot(control, aes(x=age, y= temp))+
@@ -91,11 +96,13 @@ plot(age, numeric_positive=10000000, main="Scatterplot positive",
 ```
 
 Combining data sets
+
 ```{r}
 control$sepsis = 0
 positive$sepsis = 1
 df = rbind(control,positive)
 head(df)
+nrow(df)
 ```
 
 ```{r}
@@ -107,9 +114,11 @@ summary(df)
 ```{r}
 numeric_df =  select_if(df, is.numeric)
 corr_df = cor(numeric_df,use = "complete.obs")
-corrplot(corr_df, method = 'circle',title="Correlation plot for all Numeric Variables",,mar=c(1,0,1,0))
+corrplot(corr_df, method = 'circle', title="Correlation plot for all Numeric Variables", mar=c(1,0,1,0))
 ```
+
 Creating a matrix from most correlated variables
+
 ```{r}
 plot_data = df[, c('dbp',  'map',  'glucose', 'sbp', 'temp', 'rr')]
 ```
@@ -141,10 +150,8 @@ panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...) {
 }
 pairs(plot_data, upper.panel = panel.cor,diag.panel = panel.hist,lower.panel = panel.smooth,main = "Scatter plots, histograms, and corr coeff for variables of interest")
 ```
+
 Creating boxplot for variables
-```{r}
-library(grid)
-```
 
 ```{r}
 box1 = ggplot(df, aes(x = sepsis, y = glucose))+ #choses what dats is used for boxplot
@@ -167,3 +174,56 @@ grid.arrange(box1,box2,box3,box4,
           ncol = 4, top = textGrob("Boxplots for variables of interest")) #creates 1x3 plots
 ```
 
+
+Next step: Should we impute or remove all missing values? If impute - which imputation?
+
+
+Unsupervised Learning - PCA
+
+Center/scale data and prepare PCA
+
+```{r}
+# First must convert factors back into numeric values
+numeric_df = df
+numeric_df[,names] = lapply(numeric_df[,names] , as.numeric)
+
+
+df_scale = scale(numeric_df[1:36], center = TRUE, scale = TRUE)
+pr.out = prcomp(na.omit(df_scale))
+summary(pr.out)
+```
+
+Scree plot to visualize % variance explained
+
+```{r}
+fviz_eig(pr.out, addlabels = TRUE)
+```
+
+Elbow visible around PC4 or PC6, but only account for 62% and 72.7% variance, respectively. Displaying eigenvalue scree plot to analyze which PCs have eigenvalue greater than 1.
+
+```{r}
+fviz_eig(pr.out, choice = 'eigenvalue')+
+  geom_hline(yintercept=1, color = 'red')
+
+# Displaying eigenvalues since scree plot doesn't display all PCs
+get_eig(pr.out)
+```
+The first 11 PCs have eigenvalues greater than 1.
+
+Biplot of PC1 and PC2 to assess what variables contribute the most
+
+```{r}
+fviz_pca_biplot(pr.out, label="var", col.ind="cos2", title="Sepsis PCA Biplot")+
+  theme_minimal()
+```
+
+Seems that the scaling of the data might have skewed our PCA since the binary classification variables retained their end-range values of 0 and 1 while the continuous variables were scaled down to much smaller values between 0-1. Creatinine, however, is a continuous variable that seems to strongly contribute to both PC1 and
+
+
+Unsupervised Learning - K-means clustering
+
+```{r}
+kmeans_sepsis = kmeans(na.omit(df_scale), centers=2)
+fviz_cluster(kmeans_sepsis, na.omit(df_scale))+
+  labs(title="K=2 Cluster Plot")
+```

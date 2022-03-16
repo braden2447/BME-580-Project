@@ -15,6 +15,7 @@ library(corrplot)
 library(patchwork)
 library(grid)
 library(factoextra)
+library(FactoMineR)
 ```
 
 
@@ -36,6 +37,7 @@ names <- c('mech_vent' ,'apnea','perfusion','co_ivh_shunt','co_surgical','co_con
 control[,names] <- lapply(control[,names] , factor)
 summary(control)
 ```
+
 ```{r}
 names <- c('mech_vent' ,'apnea','perfusion','co_ivh_shunt','co_surgical','co_congenital','co_chronic_lung','co_nec','ecmo','uac','cvl','lethargy','temp_threshold','fio2_threshold')
 positive[,names] <- lapply(positive[,names] , factor)
@@ -178,17 +180,18 @@ grid.arrange(box1,box2,box3,box4,
 Next step: Should we impute or remove all missing values? If impute - which imputation?
 
 
-Unsupervised Learning - PCA
+Unsupervised Learning - PCA for numeric variables
 
 Center/scale data and prepare PCA
 
 ```{r}
 # First must convert factors back into numeric values
 numeric_df = df
+numeric_df[,names] = lapply(numeric_df[,names] , as.character) # Convert to char first to avoid 0-1 ordinal values becoming 1-2
 numeric_df[,names] = lapply(numeric_df[,names] , as.numeric)
 
 
-df_scale = scale(numeric_df[1:36], center = TRUE, scale = TRUE)
+df_scale = scale(numeric_df[c(1:17, 19, 27:30)], center = TRUE, scale = TRUE)
 pr.out = prcomp(na.omit(df_scale))
 summary(pr.out)
 ```
@@ -199,7 +202,7 @@ Scree plot to visualize % variance explained
 fviz_eig(pr.out, addlabels = TRUE)
 ```
 
-Elbow visible around PC4 or PC6, but only account for 62% and 72.7% variance, respectively. Displaying eigenvalue scree plot to analyze which PCs have eigenvalue greater than 1.
+Elbow visible around PC3 or PC7, but only account for 54.4% and 83.1% variance, respectively. Displaying eigenvalue scree plot to analyze which PCs have eigenvalue greater than 1.
 
 ```{r}
 fviz_eig(pr.out, choice = 'eigenvalue')+
@@ -208,7 +211,7 @@ fviz_eig(pr.out, choice = 'eigenvalue')+
 # Displaying eigenvalues since scree plot doesn't display all PCs
 get_eig(pr.out)
 ```
-The first 11 PCs have eigenvalues greater than 1.
+The first 7 PCs have eigenvalues greater than 1.
 
 Biplot of PC1 and PC2 to assess what variables contribute the most
 
@@ -217,7 +220,28 @@ fviz_pca_biplot(pr.out, label="var", col.ind="cos2", title="Sepsis PCA Biplot")+
   theme_minimal()
 ```
 
-Seems that the scaling of the data might have skewed our PCA since the binary classification variables retained their end-range values of 0 and 1 while the continuous variables were scaled down to much smaller values between 0-1. Creatinine, however, is a continuous variable that seems to strongly contribute to both PC1 and
+ Creatinine, is the variable that seems to strongly contribute to both PC1 and PC2 with it_ratio, wbc, gest_age, weight, and bicarb also contributing significantly.
+
+
+Unsupervised Learning - MCA for ordinal variables
+
+```{r}
+# Create dataset of binary classification variables, convert to char
+mca_df = numeric_df[c(18, 20:26, 31:36)]
+ord_list = c('mech_vent' ,'apnea','perfusion','co_ivh_shunt','co_surgical','co_congenital','co_chronic_lung','co_nec','ecmo','uac','cvl','lethargy','temp_threshold','fio2_threshold')
+mca_df[, ord_list] = lapply(mca_df[, ord_list], as.character)
+
+#Perform MCA and plots
+mca.out = MCA(mca_df, ncp = 10, graph = FALSE)
+fviz_eig(mca.out, addlabels = TRUE)
+
+fviz_eig(mca.out, choice = 'eigenvalue')+
+  geom_hline(yintercept=1, color = 'red')
+
+fviz_mca_biplot(mca.out, repel = TRUE, label="var", col.ind="cos2", title="Sepsis MCA Biplot")+
+  theme_minimal()
+```
+Dimensions 1 and 2 do not adequately encompass most of the variance within the ordinal data, but it is evident that ecmo_1 and uac_1 contribute the most significantly to these two components. Further analysis should be considered on these variables.
 
 
 Unsupervised Learning - K-means clustering

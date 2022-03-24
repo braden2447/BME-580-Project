@@ -16,6 +16,9 @@ library(patchwork)
 library(grid)
 library(factoextra)
 library(FactoMineR)
+library(mice)
+library(xgboost)
+set.seed(580)
 ```
 
 
@@ -44,58 +47,6 @@ positive[,names] <- lapply(positive[,names] , factor)
 summary(positive)
 ```
 
-
-Making box and violin for control age vs temp
-
-```{r}
-violin_control = ggplot(control, aes(x=age, y= temp))+
-  geom_violin(outlier.color="blue")+
-  labs(title="age vs temp", x="age", fill="temp")
-violin_control
-```
-
-```{r}
-box_control = ggplot(control, aes(x=age, y= temp))+
-  geom_boxplot(outlier.color="blue")+
-  labs(title="age vs temp", x="age", fill="temp")
-box_control
-```
-
-Making box and violin for positive age vs temp
-
-```{r}
-violin_positive = ggplot(positive, aes(x=age, y= temp))+
-  geom_violin(outlier.color="blue")+
-  labs(title="age vs temp", x="age", fill="temp")
-violin_positive
-```
-
-```{r}
-box_positive = ggplot(positive, aes(x=age, y= temp))+
-  geom_boxplot(outlier.color="blue")+
-  labs(title="age vs temp", x="age", fill="temp")
-box_positive
-```
-
-Scatter plot of control
-
-```{r}
- attach(control)
-omit_control = na.omit(control)
-numeric_control = subset(omit_control, select=c(age, temp, weight))
-plot(age, numeric_control=100000, main="Scatterplot control",
-   xlab="age", ylab="Vitals", pch=19, color=numeric_control)
-```
-
-Scatter plot of positive
-
-```{r}
-attach(positive)
-omit_positive = na.omit(positive)
-numeric_positive = subset(omit_positive, select=c(age, temp, weight))
-plot(age, numeric_positive=10000000, main="Scatterplot positive",
-   xlab="age", ylab="Vitals", pch=19, color=numeric_positive)
-```
 
 Combining data sets
 
@@ -177,7 +128,57 @@ grid.arrange(box1,box2,box3,box4,
 ```
 
 
+
 Next step: Should we impute or remove all missing values? If impute - which imputation?
+
+Assessing missingness
+
+```{r}
+library(visdat)
+num = c(1:17, 19, 27:30)
+vis_miss(df[num])
+```
+
+Removing capPH due to high missingness - 93.56% - and imputing the rest
+
+```{r}
+df = df %>% select(-capPH)
+```
+
+Assessing co-missingness of test panels
+```{r}
+num_binary = df # Columns 3-9 have most missingness
+for (i in 3:9) {
+  num_binary[,i] = as.integer(complete.cases(num_binary[,i]))
+}
+
+corr_df_miss = cor(num_binary[3:9],use = "complete.obs")
+corrplot(corr_df_miss, method = 'number', title="Missingness Correlation Plot", mar=c(1,0,1,0))
+```
+
+Two obvious correlation groups, or potential "test panels" of tests administered together, can be seen: 1) Complete blood cell panel (WBC, HGB, it_ratio, platelet_count) and 2) Blood chemistry panel (creatinine, bicarb, glucose). A missingness category will be created for each group to reduce the number of features.
+
+
+Creating missingness category df with mean imputation of features with small missingness (<50%)
+```{r}
+df_missingCats = num_binary %>% select(-c('wbc','hgb', 'platelet_count', 'bicarb', 'glucose'))
+colnames(df_missingCats)[3] = "cbc_missingness"
+colnames(df_missingCats)[4] = "blood_chem_missingness"
+for (i in 1:ncol(df_missingCats)) {
+  df_missingCats[,i][is.na(df_missingCats[,i])] = mean(df_missingCats[,i], na.rm=TRUE)
+}
+```
+
+Mean imputation df
+```{r}
+# Perform mean imputation on numeric variables
+df_meanImp = df
+for (i in 1:ncol(df_meanImp)) {
+  df_meanImp[,i][is.na(df_meanImp[,i])] = mean(df_meanImp[,i], na.rm=TRUE)
+}
+vis_miss(df_meanImp[num])
+```
+
 
 
 Unsupervised Learning - PCA for numeric variables

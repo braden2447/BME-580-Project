@@ -1,0 +1,161 @@
+---
+title: "Extreme_Boost_Attempt"
+author: "Denver Bradley"
+date: "3/22/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library (readr)
+library(dplyr)
+library(tidyverse)
+library(xgboost)
+library(caret)
+library(ROCR)
+library(mlr)
+library(ParamHelpers)
+```
+
+```{r}
+control_file="https://raw.githubusercontent.com/braden2447/BME-580-Project/main/Sepsis_control_data.csv"
+positive_file = "https://raw.githubusercontent.com/braden2447/BME-580-Project/main/Sepsis_positive_data.csv"
+
+control <- read.csv(url(control_file))
+positive <- read.csv(url(positive_file))
+positive$sepsis_group <- NULL
+control$sepsis_group <- NULL
+control$sepsis = 0
+positive$sepsis = 1
+df = rbind(control,positive)
+head(df)
+```
+Look at missingness in data
+```{r}
+summary(df)
+```
+
+Look at data after imputation
+```{r}
+df = df %>% fill(names(df), .direction = 'downup') 
+summary(df)
+```
+
+Removing capPH and creating training and test set
+```{r}
+df$capPH = NULL
+inTrain = createDataPartition(y = df$sepsis, p = 0.8, list = FALSE)
+
+training = df[inTrain,]
+
+testing = df[-inTrain,]
+```
+
+Creating y label and x matrix that xgboost can use
+```{r}
+y_train = training$sepsis
+x_train = xgb.DMatrix(as.matrix(training %>% select(-sepsis)),label = y_train)
+
+y_test = testing$sepsis
+x_test = xgb.DMatrix(as.matrix(testing %>% select(-sepsis)),label = y_test)
+```
+
+Using 5 fold cross val on train set to determine nrounds
+```{r}
+cross_val = xgb.cv(data = x_train, nfold = 5,
+                 nrounds = 100, objective = "binary:logistic", metric = list('logloss','auc','aucpr'),prediction = TRUE, verbose = 0, save_models = TRUE)
+cross_val
+```
+
+```{r}
+err = data.frame(cross_val$evaluation_log)
+plot(err$iter, err$train_logloss_mean, col = 'blue')
+lines(err$iter, err$test_logloss_mean, col = 'red')
+```
+
+```{r}
+plot(err$iter, err$train_auc_mean, col = 'blue',ylim = c(0.5,1))
+lines(err$iter, err$test_auc_mean, col = 'red')
+```
+
+```{r}
+err[err$test_auc_mean == max(err$test_auc_mean),]
+```
+
+Tuning the parameters for the model
+```{r}
+xgb_trcontrol = trainControl(
+  method = "cv",
+  number = 5,  
+  allowParallel = TRUE,
+  verboseIter = FALSE,
+  classProbs = TRUE,
+  summaryFunction = twoClassSummary
+)
+```
+
+```{r}
+xgbGrid <- expand.grid(nrounds = 25,
+                       max_depth = c(3,6,10),
+                       eta = c(0.1,.2,.3),
+                       colsample_bytree = 1,
+                       gamma=0,
+                       min_child_weight = 1,
+                       subsample = 1
+                      )
+```
+
+```{r}
+tran = training %>% select(-sepsis)
+y = training %>% select(sepsis)
+xgb_model = caret::train(
+  x = tran, y = as.factor(ifelse( y == 1, 'pos', 'neg')),  
+  trControl = xgb_trcontrol,
+  method = "xgbTree",
+  metric = 'Spec',
+  tuneGrid = xgbGrid,
+  verbosity = 0
+)
+```
+
+```{r}
+xgb_model
+```
+
+Creating model with best nrounds and parameters
+```{r}
+boost_model = xgb.train(data = x_train,
+                 nrounds = 25,
+                 max_depth = xgb_model$bestTune[,'max_depth'],
+                 eta = xgb_model$bestTune[,'eta'],
+                 objective = "binary:logistic",
+                 eval_metric = 'logloss')
+```
+
+```{r}
+x_training = training %>% select(-sepsis)
+importance = xgb.importance(colnames(x_training), model = boost_model)
+xgb.plot.importance(importance[1:20])
+```
+
+```{r}
+boost_pred = predict(boost_model,x_test)
+actual = ifelse(prediction > 0.45, 1, 0)
+stats = confusionMatrix(as.factor(actual),as.factor(y_test),positive = '1')
+stats
+```
+
+```{r}
+pred_boost = prediction(boost_pred, y_test)
+perf_boost = ROCR::performance(pred_boost,'tpr','fpr')
+plot(perf_boost, main = 'ROC curve for XGBOOST model') 
+```
+
+```{r}
+auc_boost = ROCR::performance(pred_boost, measure = "auc") 
+auc_boost@y.values[[1]]
+```
+
+
+
+
+

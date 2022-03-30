@@ -16,8 +16,9 @@ library(patchwork)
 library(grid)
 library(factoextra)
 library(FactoMineR)
-library(mice)
+library(mice) # Multiple imputation - may not use
 library(xgboost)
+library(klaR) # kmodes function 
 set.seed(580)
 ```
 
@@ -142,15 +143,18 @@ vis_miss(df[num])
 Removing capPH due to high missingness - 93.56% - and imputing the rest
 
 ```{r}
-df = df %>% select(-capPH)
+df = df %>% dplyr::select(-capPH)
 ```
 
 Assessing co-missingness of test panels
 ```{r}
 num_binary = df # Columns 3-9 have most missingness
+
+# Converting NA's to 1 (i.e. missing) and numerical values to 0 (i.e. not missing)
 for (i in 3:9) {
-  num_binary[,i] = as.integer(complete.cases(num_binary[,i]))
+  num_binary[,i] = ifelse(is.na(num_binary[,i]) == T,1,0)
 }
+
 
 corr_df_miss = cor(num_binary[3:9],use = "complete.obs")
 corrplot(corr_df_miss, method = 'number', title="Missingness Correlation Plot", mar=c(1,0,1,0))
@@ -161,7 +165,7 @@ Two obvious correlation groups, or potential "test panels" of tests administered
 
 Creating missingness category df with mean imputation of features with small missingness (<50%)
 ```{r}
-df_missingCats = num_binary %>% select(-c('wbc','hgb', 'platelet_count', 'bicarb', 'glucose'))
+df_missingCats = num_binary %>% dplyr::select(-c('wbc','hgb', 'platelet_count', 'bicarb', 'glucose'))
 colnames(df_missingCats)[3] = "cbc_missingness"
 colnames(df_missingCats)[4] = "blood_chem_missingness"
 for (i in 1:ncol(df_missingCats)) {
@@ -192,8 +196,14 @@ df_missingCats[,names] = lapply(df_missingCats[,names], as.character)
 df_meanImp[,names] = lapply(df_meanImp[,names] , as.numeric)
 df_missingCats[,names] = lapply(df_missingCats[,names], as.numeric)
 
-df_mean_numeric = scale(df_meanImp[c(1:16, 18, 26:29)], center=T, scale=T)
-df_missing_numeric = scale(df_missingCats[c(1:2, 5:11, 13, 21:24)], center=T, scale=T)
+# SCALING ACTUAL DATASETS FOR USE IN MODELS
+df_meanImp[c(1:16, 18, 26:29)] = scale(df_meanImp[c(1:16, 18, 26:29)], center=T, scale=T)
+df_missingCats[c(1:2, 5:11, 13, 21:24)] = scale(df_missingCats[c(1:2, 5:11, 13, 21:24)], center=T, scale=T)
+
+# Scaled numeric datasets
+df_mean_numeric = df_meanImp[c(1:16, 18, 26:29)]
+df_missing_numeric = df_missingCats[c(1:2, 5:11, 13, 21:24)]
+
 mean_pr.out = prcomp(df_mean_numeric)
 missing_pr.out = prcomp(df_missing_numeric)
 summary(mean_pr.out)
@@ -266,10 +276,50 @@ fviz_mca_biplot(missing_mca.out, repel = TRUE, label="var", col.ind="cos2", titl
 Dimensions 1 and 2 do not adequately encompass most of the variance within the ordinal data for either dataset, but it is evident that ecmo_1 and uac_1 contribute the most significantly to these two components. Further analysis should be considered on these variables.
 
 
-Unsupervised Learning - K-means clustering
+Unsupervised Learning - K-means/K-modes clustering
+
+K-means for numerical data
+
+Silhouette method to assess optimal K value (chosen over elbow method due to ambiguity with elbow method)
 
 ```{r}
-kmeans_sepsis = kmeans(na.omit(df_scale), centers=2)
-fviz_cluster(kmeans_sepsis, na.omit(df_scale))+
-  labs(title="K=2 Cluster Plot")
+#Silhouette method
+fviz_nbclust(df_mean_numeric, kmeans, method="silhouette")+
+  labs(subtitle="Mean Imputation Silhouette")
+
+fviz_nbclust(df_missing_numeric, kmeans, method="silhouette")+
+  labs(subtitle="Missing Silhouette")
 ```
+
+```{r}
+# Mean imputation df cluster
+kmeans_meanImp = kmeans(df_mean_numeric, centers=2, iter.max=10, nstart=20)
+fviz_cluster(kmeans_meanImp, df_mean_numeric)+
+  labs(title="K=2 Mean Imputation Cluster Plot")
+
+# Missingness df cluster
+kmeans_missingCats = kmeans(df_missing_numeric, centers=3, iter.max=10, nstart=20)
+fviz_cluster(kmeans_missingCats, df_missing_numeric)+
+  labs(title="K=3 Missing Categories Cluster Plot")
+
+# Tables
+table(Cluster = kmeans_meanImp$cluster, Outcome = df_meanImp$sepsis)
+table(Cluster = kmeans_missingCats$cluster, Outcome = df_missingCats$sepsis)
+```
+
+Discernible clusters are hard to make out due to the large number of observations. There seemed to be no significant difference between the clusters formed by K=2 or K=3 between the mean imputed dataset and missing category dataset. If anything, Cluster 2 of the mean imputation kmeans clustering seemed to encompass most of the sepsis negative datapoints, and Cluster 3 of the missing category kmeans clustering seemed to encompass most of the sepsis positive datapoints.
+
+K-modes for categorical data
+
+```{r}
+# Using same number of modes as number of K centers above
+# No good cluster visualization for kmodes, so only printing tables
+kmodes_meanImp = kmodes(mean_mca_df, modes=2, iter.max=10, fast=F)
+table(Cluster = kmodes_meanImp$cluster, Outcome = df_meanImp$sepsis)
+
+kmodes_missingCats = kmodes(missing_mca_df, modes=3, iter.max=10, fast=F)
+table(Cluster = kmodes_missingCats$cluster, Outcome = df_missingCats$sepsis)
+
+```
+
+Again, no great clustering discernment for the two different outcomes with such a large number of observations. Cluster 1 from the mean imputation K-modes clustering did seem to encompass the vast majority of negative outcomes but also included a large percentage of positive outcomes. Cluster 1 from the missing category K-modes clustering also provided the same result. There are too many observations to find significant groupings in simply 2-3 clusters.

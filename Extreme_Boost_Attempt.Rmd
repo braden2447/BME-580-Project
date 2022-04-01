@@ -14,8 +14,10 @@ library(caret)
 library(ROCR)
 library(mlr)
 library(ParamHelpers)
+set.seed(42069)
 ```
 
+Importing data set, adding sepsis, and non sespsis category, and looking at data
 ```{r}
 control_file="https://raw.githubusercontent.com/braden2447/BME-580-Project/main/Sepsis_control_data.csv"
 positive_file = "https://raw.githubusercontent.com/braden2447/BME-580-Project/main/Sepsis_positive_data.csv"
@@ -34,20 +36,40 @@ Look at missingness in data
 summary(df)
 ```
 
-Look at data after imputation
-```{r}
-df = df %>% fill(names(df), .direction = 'downup') 
-summary(df)
-```
-
-Removing capPH and creating training and test set
+Remove capPH
 ```{r}
 df$capPH = NULL
-inTrain = createDataPartition(y = df$sepsis, p = 0.8, list = FALSE)
+```
 
-training = df[inTrain,]
+Creating missingness category for correlated variables with small missingness (<50%)
+```{r}
+num_binary = df # Columns 3-9 have most missingness
+# Converting NA's to 1 (i.e. missing) and numerical values to 0 (i.e. not missing)
+for (i in 3:9) {
+  num_binary[,i] = ifelse(is.na(num_binary[,i]) == T,1,0)
+}
+df_missingCats = num_binary %>% dplyr::select(-c('wbc','hgb', 'platelet_count', 'bicarb', 'glucose'))
+colnames(df_missingCats)[3] = "cbc_missingness"
+colnames(df_missingCats)[4] = "blood_chem_missingness"
+```
 
-testing = df[-inTrain,]
+Mean imputation on rest of missingness in df
+```{r}
+# Perform mean imputation on numeric variables
+df_meanImp = df_missingCats
+for (i in 1:ncol(df_meanImp)) {
+  df_meanImp[,i][is.na(df_meanImp[,i])] = mean(df_meanImp[,i], na.rm=TRUE)
+}
+summary(df_meanImp)
+```
+
+Creating training and test set
+```{r}
+inTrain = createDataPartition(y = df_meanImp$sepsis, p = 0.8, list = FALSE)
+
+training = df_meanImp[inTrain,]
+
+testing = df_meanImp[-inTrain,]
 ```
 
 Creating y label and x matrix that xgboost can use
@@ -59,7 +81,7 @@ y_test = testing$sepsis
 x_test = xgb.DMatrix(as.matrix(testing %>% select(-sepsis)),label = y_test)
 ```
 
-Using 5 fold cross val on train set to determine nrounds
+Using 5 fold cross val on train set to determine range for nrounds
 ```{r}
 cross_val = xgb.cv(data = x_train, nfold = 5,
                  nrounds = 100, objective = "binary:logistic", metric = list('logloss','auc','aucpr'),prediction = TRUE, verbose = 0, save_models = TRUE)
@@ -78,8 +100,9 @@ lines(err$iter, err$test_auc_mean, col = 'red')
 ```
 
 ```{r}
-err[err$test_auc_mean == max(err$test_auc_mean),]
+err[err$test_logloss_mean == min(err$test_logloss_mean),]
 ```
+Seems best range for nrounds lies between 5-20 rounds
 
 Tuning the parameters for the model
 ```{r}
@@ -93,10 +116,11 @@ xgb_trcontrol = trainControl(
 )
 ```
 
+Grid searching with select parameters
 ```{r}
-xgbGrid <- expand.grid(nrounds = 25,
-                       max_depth = c(3,6,10),
-                       eta = c(0.1,.2,.3),
+xgbGrid <- expand.grid(nrounds = c(5,10,15,20),
+                       max_depth = c(3,6,10,15),
+                       eta = c(0.1,.2,.3,.5),
                        colsample_bytree = 1,
                        gamma=0,
                        min_child_weight = 1,
@@ -104,6 +128,7 @@ xgbGrid <- expand.grid(nrounds = 25,
                       )
 ```
 
+Searching for parmeters that give highest sensitivity
 ```{r}
 tran = training %>% select(-sepsis)
 y = training %>% select(sepsis)
@@ -111,7 +136,7 @@ xgb_model = caret::train(
   x = tran, y = as.factor(ifelse( y == 1, 'pos', 'neg')),  
   trControl = xgb_trcontrol,
   method = "xgbTree",
-  metric = 'Spec',
+  metric = 'Sens',
   tuneGrid = xgbGrid,
   verbosity = 0
 )
@@ -124,32 +149,34 @@ xgb_model
 Creating model with best nrounds and parameters
 ```{r}
 boost_model = xgb.train(data = x_train,
-                 nrounds = 25,
+                 nrounds = xgb_model$bestTune[,'nrounds'],
                  max_depth = xgb_model$bestTune[,'max_depth'],
                  eta = xgb_model$bestTune[,'eta'],
                  objective = "binary:logistic",
                  eval_metric = 'logloss')
 ```
 
+Looking at feature importance
 ```{r}
 x_training = training %>% select(-sepsis)
 importance = xgb.importance(colnames(x_training), model = boost_model)
-xgb.plot.importance(importance[1:20])
+xgb.plot.importance(importance[1:nrow(importance)])
 ```
-
+Looking at scores for model. Keeping sensitivity to above .8 like the original paper did in order to compare other values
 ```{r}
 boost_pred = predict(boost_model,x_test)
-actual = ifelse(prediction > 0.45, 1, 0)
+actual = ifelse(prediction > 0.22, 1, 0)
 stats = confusionMatrix(as.factor(actual),as.factor(y_test),positive = '1')
 stats
 ```
 
+AUC plot
 ```{r}
 pred_boost = prediction(boost_pred, y_test)
 perf_boost = ROCR::performance(pred_boost,'tpr','fpr')
 plot(perf_boost, main = 'ROC curve for XGBOOST model') 
 ```
-
+AUC score
 ```{r}
 auc_boost = ROCR::performance(pred_boost, measure = "auc") 
 auc_boost@y.values[[1]]

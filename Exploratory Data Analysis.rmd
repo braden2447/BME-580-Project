@@ -277,6 +277,25 @@ fviz_mca_biplot(missing_mca.out, repel = TRUE, label="var", col.ind="cos2", titl
 Dimensions 1 and 2 do not adequately encompass most of the variance within the ordinal data for either dataset, but it is evident that ecmo_1 and uac_1 contribute the most significantly to these two components. Further analysis should be considered on these variables.
 
 
+PCAmixdata Attempt
+
+```{r}
+# Mean imputed data
+library(PCAmixdata)
+pcamix.out = PCAmix(X.quanti = df_mean_numeric, X.quali = mean_mca_df, ndim=5, rename.level=T, graph=F)
+summary(pcamix.out)
+pcamix.out$eig
+```
+
+```{r}
+# Missingness categories data
+library(PCAmixdata)
+pcamix_miss.out = PCAmix(X.quanti = df_missing_numeric, X.quali = missing_mca_df, ndim=5, rename.level=T, graph=F)
+summary(pcamix_miss.out)
+pcamix_miss.out$eig
+```
+
+
 Unsupervised Learning - K-means/K-modes clustering
 
 K-means for numerical data

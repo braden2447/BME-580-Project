@@ -19,6 +19,7 @@ library(FactoMineR)
 library(mice) # Multiple imputation - may not use
 library(xgboost)
 library(klaR) # kmodes function 
+library(PCAmixdata)
 set.seed(580)
 ```
 
@@ -323,3 +324,12 @@ table(Cluster = kmodes_missingCats$cluster, Outcome = df_missingCats$sepsis)
 ```
 
 Again, no great clustering discernment for the two different outcomes with such a large number of observations. Cluster 1 from the mean imputation K-modes clustering did seem to encompass the vast majority of negative outcomes but also included a large percentage of positive outcomes. Cluster 1 from the missing category K-modes clustering also provided the same result. There are too many observations to find significant groupings in simply 2-3 clusters.
+
+```{r}
+write.csv(df_mean_numeric,"C:\\Users\\venka\\OneDrive\\Documents\\GitHub\\BME-580-Project\\df_mean_numeric.csv", row.names = FALSE)
+
+write.csv(df_missing_numeric,"C:\\Users\\venka\\OneDrive\\Documents\\GitHub\\BME-580-Project\\df_missing_numeric.csv", row.names = FALSE)
+
+write.csv(df_meanImp,"C:\\Users\\venka\\OneDrive\\Documents\\GitHub\\BME-580-Project\\df_meanImp.csv", row.names = FALSE)
+```
+

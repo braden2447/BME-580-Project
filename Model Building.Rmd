@@ -20,6 +20,7 @@ library(FactoMineR)
 library(mice) # Multiple imputation - may not use
 library(xgboost)
 library(klaR) # kmodes function 
+library(PCAmixdata)
 ```
 
 Reading datasets

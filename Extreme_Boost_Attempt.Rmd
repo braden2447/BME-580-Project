@@ -90,13 +90,15 @@ cross_val
 
 ```{r}
 err = data.frame(cross_val$evaluation_log)
-plot(err$iter, err$train_logloss_mean, col = 'blue')
+plot(err$iter, err$train_logloss_mean, col = 4, main = 'Log loss mean vs number of iterations', xlab = 'Number of iterations',ylab = 'Log loss mean') 
 lines(err$iter, err$test_logloss_mean, col = 'red')
+legend('right',legend = c("Train","Test"),col=c(4,2), lty = c(3,1))
 ```
 
 ```{r}
-plot(err$iter, err$train_auc_mean, col = 'blue',ylim = c(0.5,1))
+plot(err$iter, err$train_auc_mean, col = 4,ylim = c(0.5,1), main = 'AUC mean vs number of iterations', xlab = 'Number of iterations',ylab = 'AUC mean')
 lines(err$iter, err$test_auc_mean, col = 'red')
+legend('bottom',legend = c("Train","Test"),col=c(4,2), lty = c(3,1))
 ```
 
 ```{r}

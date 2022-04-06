@@ -23,6 +23,7 @@ library(PCAmixdata)
 library(MASS)
 library(caTools)
 library(class)
+library(ROCR)
 set.seed(580)
 ```
 
@@ -357,6 +358,7 @@ write.csv(df_meanImp,"C:\\Users\\venka\\OneDrive\\Documents\\GitHub\\BME-580-Pro
 write.csv(df_missingCats,"C:\\Users\\venka\\OneDrive\\Documents\\GitHub\\BME-580-Project\\df_missingCats.csv", row.names = FALSE)
 ```
 
+Section 1: mean data
 
 Data division to test and train
 
@@ -367,39 +369,97 @@ train <- subset(df_meanImp, split==TRUE)
 test <- subset(df_meanImp,split ==FALSE)
 ```
 
-spliti = sample.split(positive$sepsis, SplitRatio=.8)
-
-traini <- subset(positive, split==TRUE) 
-testi <- subset(positive, split ==FALSE)
-
-
 
 Model building
 
 ```{r}
-pc.comp <- pcamix.out$scores
-pc.comp1 <- -1*pc.comp[,1] # principal component 1 scores (negated for convenience)
-pc.comp2 <- -1*pc.comp[,2] # principal component 2 scores (negated for convenience)
-pc.comp3 <- -1*pc.comp[,3]
-pc.comp4 <- -1*pc.comp[,4]
-pc.comp5 <- -1*pc.comp[,5]
 
-#logModel <- glm(sepsis~pc.comp1+pc.comp2+pc.comp3+pc.comp4+pc.comp5, family=binomial, data = train)
-#summary(logModel)
+logModel = glm(sepsis~. +polym(uac, ecmo, lethargy, fio2_threshold, sbp, map, gest_age, weight, hr_delta, rr_delta), family=binomial, data = train)
+
+```
+
+
+
+```{r}
+log.fit = predict(logModel, newdata = test, type = 'response')
+```
+
+```{r}
+log.fit = ifelse(log.fit > 0.22, '1', '0')
+```
+
+```{r}
+library(caret)
+print('Test confusion matrix')
+confusionTabl2 = confusionMatrix(as.factor(log.fit), as.factor(test$sepsis), positive = '1')
+confusionTabl2
 ```
 
 
 ```{r}
-library(pls)
-logModel = pcr(sepsis ~, family = binomial, data = train, scale = TRUE)
-summary(logModel)
+misclassification = sum(log.fit != test$sepsis)/length(test$sepsis)
+print(paste('Accuracy', 1-misclassification))
+```
+
+```{r}
+log.fit = predict(logModel, newdata = test, type='response')
+pred <- prediction(log.fit, test$sepsis)
+perf <- ROCR::performance(pred, 'tpr', 'fpr')
+plot(perf, main= "ROC Curve")
+abline(a=0, b=1)
+
+aucROCR <- ROCR::performance(pred, measure = "auc")
+aucROCR <- aucROCR@y.values[[1]]
+aucROCR
+```
+
+Section 2: Missing data
+
+Data set split
+
+```{r}
+spliti = sample.split(df_missingCats$sepsis, SplitRatio=.8)
+
+traini <- subset(df_missingCats, split==TRUE) 
+testi <- subset(df_missingCats, split ==FALSE)
+```
+
+```{r}
+
+logModel2 = glm(sepsis~. +polym(uac, ecmo, lethargy, fio2_threshold, sbp, map, gest_age, weight, hr_delta, rr_delta), family=binomial, data = traini)
+
 ```
 
 
-``{r}
-log.fit = predict(logModel, newdata = test, type = 'response')
-s
 
-misclassification = sum(log.fit != testData$type)/length(testData$type)
-print(paste('Accuracy', 1-misclassification))
+```{r}
+log.fit2 = predict(logModel2, newdata = testi, type = 'response')
+```
 
+```{r}
+log.fit2 = ifelse(log.fit2 > 0.22, '1', '0')
+```
+
+```{r}
+library(caret)
+print('Test confusion matrix')
+confusionTabl22 = confusionMatrix(as.factor(log.fit2), as.factor(testi$sepsis), positive = '1')
+confusionTabl22
+```
+
+```{r}
+misclassification2 = sum(log.fit2 != testi$sepsis)/length(testi$sepsis)
+print(paste('Accuracy', 1-misclassification2))
+```
+
+```{r}
+log.fit2 = predict(logModel2, newdata = testi, type='response')
+pred2 <- prediction(log.fit2, testi$sepsis)
+perf2 <- ROCR::performance(pred2, 'tpr', 'fpr')
+plot(perf, main= "ROC Curve")
+abline(a=0, b=1)
+
+aucROCR2 <- ROCR::performance(pred2, measure = "auc")
+aucROCR2 <- aucROCR2@y.values[[1]]
+aucROCR2
+```

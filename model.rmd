@@ -384,15 +384,16 @@ pc.comp3 <- -1*pc.comp[,3]
 pc.comp4 <- -1*pc.comp[,4]
 pc.comp5 <- -1*pc.comp[,5]
 
-logModel <- glm(sepsis~pc.comp1+pc.comp2+pc.comp3+pc.comp4+pc.comp5, family=binomial, data = train)
-summary(logModel)
+#logModel <- glm(sepsis~pc.comp1+pc.comp2+pc.comp3+pc.comp4+pc.comp5, family=binomial, data = train)
+#summary(logModel)
 ```
 
 
-``{r}
-logModel = glm(sepsis ~., family = binomial, data = train)
+```{r}
+library(pls)
+logModel = pcr(sepsis ~, family = binomial, data = train, scale = TRUE)
 summary(logModel)
-``
+```
 
 
 ``{r}

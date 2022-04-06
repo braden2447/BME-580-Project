@@ -14,7 +14,7 @@ library(caret)
 library(ROCR)
 library(mlr)
 library(ParamHelpers)
-set.seed(42069)
+set.seed(42072)
 ```
 
 Importing data set, adding sepsis, and non sespsis category, and looking at data
@@ -162,26 +162,27 @@ Looking at feature importance
 ```{r}
 x_training = training %>% select(-sepsis)
 importance = xgb.importance(colnames(x_training), model = boost_model)
-xgb.plot.importance(importance[1:nrow(importance)])
+xgb.plot.importance(importance[1:nrow(importance)],xlab = "Relative importance", main = 'Imortance for xgboost')
 ```
 Looking at scores for model. Keeping sensitivity to above .8 like the original paper did in order to compare other values
 ```{r}
 boost_pred = predict(boost_model,x_test)
-actual = ifelse(prediction > 0.22, 1, 0)
+actual = ifelse(boost_pred > 0.29, 1, 0)
 stats = confusionMatrix(as.factor(actual),as.factor(y_test),positive = '1')
 stats
 ```
 
-AUC plot
+AUC Score
 ```{r}
 pred_boost = prediction(boost_pred, y_test)
-perf_boost = ROCR::performance(pred_boost,'tpr','fpr')
-plot(perf_boost, main = 'ROC curve for XGBOOST model') 
-```
-AUC score
-```{r}
 auc_boost = ROCR::performance(pred_boost, measure = "auc") 
 auc_boost@y.values[[1]]
+```
+ROC Curve Plot
+```{r}
+perf_boost = ROCR::performance(pred_boost,'tpr','fpr')
+plot(perf_boost, main = 'ROC curve for XGBOOST model') 
+legend('right',legend = round(auc_boost@y.values[[1]],3),col=1, lty = 1, title = 'ROC-AUC')
 ```
 
 

@@ -1,5 +1,5 @@
 ---
-title: "Exploratory data analysis"
+title: "Model Building"
 author: "Venkata Battepati"
 date: "02/03/2022"
 output: pdf_document
@@ -20,6 +20,9 @@ library(mice) # Multiple imputation - may not use
 library(xgboost)
 library(klaR) # kmodes function 
 library(PCAmixdata)
+library(MASS)
+library(caTools)
+library(class)
 set.seed(580)
 ```
 
@@ -286,7 +289,7 @@ pcamix.out <- PCAmix(X.quanti = df_mean_numeric, X.quali = mean_mca_df, ndim=5, 
 summary(pcamix.out)
 pcamix.out$eig
 
-write.csv(pcamix.out,"C:\\Users\\venka\\OneDrive\\Documents\\GitHub\\BME-580-Project\\pcamixout.csv", row.names = FALSE)
+
 ```
 
 ```{r}
@@ -296,8 +299,6 @@ pcamix_missout = PCAmix(X.quanti = df_missing_numeric, X.quali = missing_mca_df,
 summary(pcamix_missout)
 pcamix_missout$eig
 
-
-write.csv(pcamix_missout,"C:\\Users\\venka\\OneDrive\\Documents\\GitHub\\BME-580-Project\\pcamix_missout.csv", row.names = FALSE)
 ```
 
 
@@ -332,7 +333,6 @@ table(Cluster = kmeans_meanImp$cluster, Outcome = df_meanImp$sepsis)
 table(Cluster = kmeans_missingCats$cluster, Outcome = df_missingCats$sepsis)
 ```
 
-Discernible clusters are hard to make out due to the large number of observations. There seemed to be no significant difference between the clusters formed by K=2 or K=3 between the mean imputed dataset and missing category dataset. If anything, Cluster 2 of the mean imputation kmeans clustering seemed to encompass most of the sepsis negative datapoints, and Cluster 3 of the missing category kmeans clustering seemed to encompass most of the sepsis positive datapoints.
 
 K-modes for categorical data
 
@@ -347,8 +347,6 @@ table(Cluster = kmodes_missingCats$cluster, Outcome = df_missingCats$sepsis)
 
 ```
 
-Again, no great clustering discernment for the two different outcomes with such a large number of observations. Cluster 1 from the mean imputation K-modes clustering did seem to encompass the vast majority of negative outcomes but also included a large percentage of positive outcomes. Cluster 1 from the missing category K-modes clustering also provided the same result. There are too many observations to find significant groupings in simply 2-3 clusters.
-
 ```{r}
 write.csv(df_mean_numeric,"C:\\Users\\venka\\OneDrive\\Documents\\GitHub\\BME-580-Project\\df_mean_numeric.csv", row.names = FALSE)
 
@@ -358,4 +356,42 @@ write.csv(df_meanImp,"C:\\Users\\venka\\OneDrive\\Documents\\GitHub\\BME-580-Pro
 
 write.csv(df_missingCats,"C:\\Users\\venka\\OneDrive\\Documents\\GitHub\\BME-580-Project\\df_missingCats.csv", row.names = FALSE)
 ```
+
+
+Data division to test and train
+
+```{r}
+split = sample.split(df_meanImp$sepsis, SplitRatio=.8)
+
+train <- subset(df_meanImp, split==TRUE) 
+test <- subset(df_meanImp,split ==FALSE)
+```
+
+spliti = sample.split(positive$sepsis, SplitRatio=.8)
+
+traini <- subset(positive, split==TRUE) 
+testi <- subset(positive, split ==FALSE)
+
+
+
+Model building
+
+```{r}
+logModel <- glm(sepsis~ + pcamix.out$scores, family=binomial, data = train)
+summary(logModel)
+```
+
+
+``{r}
+logModel = glm(sepsis ~., family = binomial, data = train)
+summary(logModel)
+``
+
+
+``{r}
+log.fit = predict(logModel, newdata = test, type = 'response')
+s
+
+misclassification = sum(log.fit != testData$type)/length(testData$type)
+print(paste('Accuracy', 1-misclassification))
 

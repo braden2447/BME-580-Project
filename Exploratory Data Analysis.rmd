@@ -286,7 +286,6 @@ pcamix.out <- PCAmix(X.quanti = df_mean_numeric, X.quali = mean_mca_df, ndim=5, 
 summary(pcamix.out)
 pcamix.out$eig
 
-write.csv(pcamix.out,"C:\\Users\\venka\\OneDrive\\Documents\\GitHub\\BME-580-Project\\pcamixout.csv", row.names = FALSE)
 ```
 
 ```{r}
@@ -296,8 +295,6 @@ pcamix_missout = PCAmix(X.quanti = df_missing_numeric, X.quali = missing_mca_df,
 summary(pcamix_missout)
 pcamix_missout$eig
 
-
-write.csv(pcamix_missout,"C:\\Users\\venka\\OneDrive\\Documents\\GitHub\\BME-580-Project\\pcamix_missout.csv", row.names = FALSE)
 ```
 
 

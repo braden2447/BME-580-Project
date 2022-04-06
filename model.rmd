@@ -377,7 +377,14 @@ testi <- subset(positive, split ==FALSE)
 Model building
 
 ```{r}
-logModel <- glm(sepsis~ + pcamix.out$scores, family=binomial, data = train)
+pc.comp <- pcamix.out$scores
+pc.comp1 <- -1*pc.comp[,1] # principal component 1 scores (negated for convenience)
+pc.comp2 <- -1*pc.comp[,2] # principal component 2 scores (negated for convenience)
+pc.comp3 <- -1*pc.comp[,3]
+pc.comp4 <- -1*pc.comp[,4]
+pc.comp5 <- -1*pc.comp[,5]
+
+logModel <- glm(sepsis~pc.comp1+pc.comp2+pc.comp3+pc.comp4+pc.comp5, family=binomial, data = train)
 summary(logModel)
 ```
 

@@ -395,12 +395,7 @@ confusionTabl2 = confusionMatrix(as.factor(log.fit), as.factor(test$sepsis), pos
 confusionTabl2
 ```
 
-```{r}
-library(caret)
-print('Test confusion matrix')
-confusionTabl2 = confusionMatrix(as.factor(log.fit), as.factor(test$sepsis), positive = '1')
-confusionTabl2
-```
+
 
 
 ```{r}
@@ -412,11 +407,13 @@ print(paste('Accuracy', 1-misclassification))
 log.fit = predict(logModel, newdata = test, type='response')
 pred <- prediction(log.fit, test$sepsis)
 perf <- ROCR::performance(pred, 'tpr', 'fpr')
-plot(perf, main= "ROC Curve")
-abline(a=0, b=1)
+plot(perf, main= "Mean Imputed Dataframe")
+abline(a=0, b=1, lty = 2, col = 3)
 
 aucROCR <- ROCR::performance(pred, measure = "auc")
 aucROCR <- aucROCR@y.values[[1]]
+legend('bottomright',legend = c(round(aucROCR,3), "Random Guessing"),col = c(1,3), lty = c(1, 2), title = 'ROC-AUC')
+
 aucROCR
 ```
 
@@ -453,12 +450,7 @@ confusionTabl22 = confusionMatrix(as.factor(log.fit2), as.factor(testi$sepsis), 
 confusionTabl22
 ```
 
-```{r}
-library(caret)
-print('Test confusion matrix')
-confusionTabl22 = confusionMatrix(as.factor(log.fit2), as.factor(testi$sepsis), positive = '1')
-confusionTabl22
-```
+
 
 ```{r}
 misclassification2 = sum(log.fit2 != testi$sepsis)/length(testi$sepsis)
@@ -469,10 +461,11 @@ print(paste('Accuracy', 1-misclassification2))
 log.fit2 = predict(logModel, newdata = testi, type='response')
 pred2 <- prediction(log.fit2, testi$sepsis)
 perf2 <- ROCR::performance(pred2, 'tpr', 'fpr')
-plot(perf, main= "ROC Curve")
-abline(a=0, b=1)
+plot(perf, main= "ROC Curve for Logistic Regression")
+abline(a=0, b=1, lty = 2, col = 3)
 
 aucROCR2 <- ROCR::performance(pred2, measure = "auc")
 aucROCR2 <- aucROCR2@y.values[[1]]
 aucROCR2
+legend('bottomright',legend = c(round(aucROCR2,3), "Random Guessing"),col = c(1,3), lty = c(1, 2), title = 'ROC-AUC')
 ```

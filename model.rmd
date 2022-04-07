@@ -374,7 +374,7 @@ Model building
 
 ```{r}
 
-logModel = glm(sepsis~. +polym(uac, ecmo, lethargy, fio2_threshold, sbp, map, gest_age, weight, hr_delta, rr_delta), family=binomial, data = train)
+logModel = glm(sepsis~uac + ecmo + lethargy + fio2_threshold + sbp + map + gest_age + weight + hr_delta + rr_delta + cvl + hr + age + temp, family=binomial, data = train)
 
 ```
 
@@ -385,7 +385,14 @@ log.fit = predict(logModel, newdata = test, type = 'response')
 ```
 
 ```{r}
-log.fit = ifelse(log.fit > 0.22, '1', '0')
+log.fit = predict(logModel, newdata = test, type = 'response')
+
+log.fit = ifelse(log.fit > 0.2, '1', '0')
+
+library(caret)
+print('Test confusion matrix')
+confusionTabl2 = confusionMatrix(as.factor(log.fit), as.factor(test$sepsis), positive = '1')
+confusionTabl2
 ```
 
 ```{r}
@@ -426,7 +433,7 @@ testi <- subset(df_missingCats, split ==FALSE)
 
 ```{r}
 
-logModel2 = glm(sepsis~. +polym(uac, ecmo, lethargy, fio2_threshold, sbp, map, gest_age, weight, hr_delta, rr_delta), family=binomial, data = traini)
+logModel2 = glm(sepsis~uac + ecmo + lethargy + fio2_threshold + sbp + map + gest_age + weight + hr_delta + rr_delta + cvl + age + hr, family=binomial, data = traini)
 
 ```
 
@@ -437,7 +444,13 @@ log.fit2 = predict(logModel2, newdata = testi, type = 'response')
 ```
 
 ```{r}
-log.fit2 = ifelse(log.fit2 > 0.22, '1', '0')
+log.fit2 = predict(logModel, newdata = testi, type = 'response')
+log.fit2 = ifelse(log.fit2 > 0.2, '1', '0')
+
+library(caret)
+print('Test confusion matrix')
+confusionTabl22 = confusionMatrix(as.factor(log.fit2), as.factor(testi$sepsis), positive = '1')
+confusionTabl22
 ```
 
 ```{r}
@@ -453,7 +466,7 @@ print(paste('Accuracy', 1-misclassification2))
 ```
 
 ```{r}
-log.fit2 = predict(logModel2, newdata = testi, type='response')
+log.fit2 = predict(logModel, newdata = testi, type='response')
 pred2 <- prediction(log.fit2, testi$sepsis)
 perf2 <- ROCR::performance(pred2, 'tpr', 'fpr')
 plot(perf, main= "ROC Curve")

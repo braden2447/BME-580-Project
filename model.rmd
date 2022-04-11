@@ -469,3 +469,6 @@ aucROCR2 <- aucROCR2@y.values[[1]]
 aucROCR2
 legend('bottomright',legend = c(round(aucROCR2,3), "Random Guessing"),col = c(1,3), lty = c(1, 2), title = 'ROC-AUC')
 ```
+```{r}
+summary(logModel)
+```

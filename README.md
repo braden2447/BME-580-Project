@@ -48,7 +48,7 @@ dataset and tested on the left-out 20%. For both models, high scores in ROC-AUC,
 desired, as high scores in these metrics indicate that the model is good at predicting true positive and true 
 negative values. Positive values in this study indicate sepsis positive infants, and predicting sepsis correctly 
 is advantageous as it can quickly become deadly in newborn children. FSLR and XGBoost models and parameters can be found in 
-```Feature_Selected_Log_Reg.rmd``` and ```Extreme-Gradient-Boost.Rmd```, respectively.
+```Feature_Selected_Log_Reg.rmd``` and ```Extreme_Gradient_Boost.Rmd```, respectively.
 
 ## Feature Selected Linear Regression Model
 
